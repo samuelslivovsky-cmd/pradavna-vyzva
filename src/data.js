@@ -25,9 +25,8 @@
 export const EVENT = {
   departure: '2026-07-09', // odchod
   end: '2026-07-12',       // koniec dobrodružstva
-  // Po nasadení na Vercel sem vlož adresu webu (napr. 'https://shehe.vercel.app').
-  // Použije sa v kalendárových pripomienkach a v e-mailoch.
-  url: '',
+  // Adresa webu — použije sa v kalendári aj v e-mailoch (fotka, tlačidlo).
+  url: 'https://pradavna-vyzva.vercel.app',
 }
 
 // Po koľkých nesprávnych pokusoch sa objaví tlačidlo „Prezradiť odpoveď".
