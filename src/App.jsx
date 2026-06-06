@@ -1,8 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useSpring,
+} from 'framer-motion'
 import { EVENT, HINTS, MAX_ATTEMPTS, WHISPER_AFTER, FINALE } from './data.js'
 import { downloadICS } from './calendar.js'
 
 const SEEN_KEY = 'shehe.seen.sigils'
+
+// --- animačné varianty (framer-motion) ---------------------------------
+const EASE = [0.22, 1, 0.36, 1]
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+}
+
+const heroContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.14, delayChildren: 0.15 } },
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 50, scale: 0.95 },
+  show: (i) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.6, ease: EASE, delay: (i % 3) * 0.09 },
+  }),
+}
+
+const inView = { once: true, amount: 0.2 }
+const cardInView = { once: true, amount: 0.15 }
 
 // jemná nápoveda generovaná z odpovede (prvé písmeno + počet písmen)
 function whisperFor(hint) {
@@ -244,13 +278,99 @@ export default function App() {
     }
   }, [allSolved])
 
+  // --- scroll parallax + progress lišta ---
+  const { scrollY, scrollYProgress } = useScroll()
+  const starsY = useTransform(scrollY, [0, 1500], [0, 120])
+  const fogY = useTransform(scrollY, [0, 1500], [0, 200])
+  const portraitY = useTransform(scrollY, [0, 600], [0, 50])
+
+  // dotykové zariadenie (telefón/tablet) — bez kurzora a hoveru
+  const coarse = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(hover: none), (pointer: coarse)').matches,
+    [],
+  )
+
+  // --- parallax pozadia: myš (desktop) / gyroskop (mobil) + kurzorová žiara ---
+  const mvX = useMotionValue(0)
+  const cursorX = useMotionValue(-1000)
+  const cursorY = useMotionValue(-1000)
+
+  // desktop: pohyb myši
+  useEffect(() => {
+    if (coarse) return
+    function onMove(e) {
+      mvX.set(e.clientX / window.innerWidth - 0.5)
+      cursorX.set(e.clientX)
+      cursorY.set(e.clientY)
+    }
+    window.addEventListener('pointermove', onMove)
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [coarse, cursorX, cursorY, mvX])
+
+  // mobil: náklon telefónu (gyroskop)
+  useEffect(() => {
+    if (!coarse) return
+    function handle(e) {
+      if (e.gamma == null) return
+      mvX.set(Math.max(-0.5, Math.min(0.5, e.gamma / 60)))
+    }
+    const DOE = typeof window !== 'undefined' ? window.DeviceOrientationEvent : null
+    if (DOE && typeof DOE.requestPermission === 'function') {
+      // iOS — povolenie treba vyžiadať po geste používateľa
+      const ask = () => {
+        DOE.requestPermission()
+          .then((p) => {
+            if (p === 'granted') window.addEventListener('deviceorientation', handle)
+          })
+          .catch(() => {})
+        window.removeEventListener('touchend', ask)
+      }
+      window.addEventListener('touchend', ask, { once: true })
+      return () => window.removeEventListener('touchend', ask)
+    }
+    window.addEventListener('deviceorientation', handle)
+    return () => window.removeEventListener('deviceorientation', handle)
+  }, [coarse, mvX])
+
+  const sMvX = useSpring(mvX, { stiffness: 40, damping: 20 })
+  const starsX = useTransform(sMvX, [-0.5, 0.5], [30, -30])
+  const fogX = useTransform(sMvX, [-0.5, 0.5], [55, -55])
+  const spotX = useTransform(useSpring(cursorX, { stiffness: 120, damping: 22 }), (v) => v - 320)
+  const spotY = useTransform(useSpring(cursorY, { stiffness: 120, damping: 22 }), (v) => v - 320)
+
   return (
     <div className="page">
-      <div className="stars" aria-hidden="true" />
-      <div className="fog" aria-hidden="true" />
-      <Embers />
+      <motion.div
+        className="scroll-progress"
+        style={{ scaleX: scrollYProgress }}
+        aria-hidden="true"
+      />
+      <motion.div className="stars" style={{ x: starsX, y: starsY }} aria-hidden="true" />
+      <motion.div className="fog" style={{ x: fogX, y: fogY }} aria-hidden="true" />
+      {!coarse && (
+        <motion.div
+          className="cursor-glow"
+          style={{ x: spotX, y: spotY }}
+          aria-hidden="true"
+        />
+      )}
+      <Meteors count={coarse ? 2 : 4} />
+      <Embers count={coarse ? 8 : 16} />
       {burst > 0 && <Confetti key={burst} />}
-      {toast && <div className="toast">{toast}</div>}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className="toast"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="content">
         {preview && (
@@ -260,21 +380,36 @@ export default function App() {
           </div>
         )}
 
-        <header className="hero">
-          <div
+        <motion.header
+          className="hero"
+          variants={heroContainer}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.div
             className="sigil"
+            variants={fadeUp}
             onClick={tapMoon}
             role="button"
             tabIndex={0}
             title="☾"
+            whileTap={{ scale: 0.82, rotate: -12 }}
           >
             ☾
-          </div>
-          <h1 className="title">Pradávna výzva</h1>
-          <p className="dedication">
+          </motion.div>
+          <motion.h1 className="title" variants={fadeUp}>
+            Pradávna výzva
+          </motion.h1>
+          <motion.p className="dedication" variants={fadeUp}>
             pre pútnika menom <span className="name">Shehe</span>
-          </p>
-          <div className="portrait" aria-hidden="true">
+          </motion.p>
+          <motion.div
+            className="portrait"
+            variants={fadeUp}
+            style={{ y: portraitY }}
+            aria-hidden="true"
+            whileHover={{ scale: 1.06, rotate: 1 }}
+          >
             <img
               src="./shehe.jpg"
               alt="Shehe"
@@ -282,15 +417,21 @@ export default function App() {
                 e.currentTarget.parentElement.style.display = 'none'
               }}
             />
-          </div>
-          <p className="subtitle">
+          </motion.div>
+          <motion.p className="subtitle" variants={fadeUp}>
             Cesta k poslednej noci slobody sa odhaľuje pomaly.
             <br />
             Pečať po pečati sa odhalí útržok pravdy… či klamu.
-          </p>
-        </header>
+          </motion.p>
+        </motion.header>
 
-        <section className="fates">
+        <motion.section
+          className="fates"
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={inView}
+        >
           <div className="fate">
             <span className="fate-label">Odchod</span>
             <span className="fate-date">{fmt.format(parseDate(EVENT.departure))}</span>
@@ -300,43 +441,85 @@ export default function App() {
             <span className="fate-label">Koniec</span>
             <span className="fate-date">{fmt.format(parseDate(EVENT.end))}</span>
           </div>
-        </section>
+        </motion.section>
 
         {doom && (
-          <section className="doom" aria-label="Odpočet do odchodu">
+          <motion.section
+            className="doom"
+            aria-label="Odpočet do odchodu"
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={inView}
+          >
             <p className="doom-label">Do odchodu zostáva</p>
             <p className="doom-value">
               {doom.d} {dayWord(doom.d)} · {pad(doom.h)}:{pad(doom.m)}:{pad(doom.s)}
             </p>
-          </section>
+          </motion.section>
         )}
 
-        <section className="tools">
-          <button className="rune-btn" onClick={downloadICS}>
+        <motion.section
+          className="tools"
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={inView}
+        >
+          <motion.button
+            className="rune-btn"
+            onClick={downloadICS}
+            whileHover={{ y: -3, scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+          >
             🔔 Pridať pripomienky do kalendára
-          </button>
+          </motion.button>
           {notifyState === 'default' && (
-            <button className="rune-btn ghost" onClick={enableNotifications}>
+            <motion.button
+              className="rune-btn ghost"
+              onClick={enableNotifications}
+              whileHover={{ y: -3, scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+            >
               🛎️ Zapnúť upozornenia
-            </button>
+            </motion.button>
           )}
           {notifyState === 'granted' && (
             <span className="notify-on">🛎️ Upozornenia zapnuté</span>
           )}
-        </section>
+        </motion.section>
 
-        <section className="progress" aria-label="Postup">
+        <motion.section
+          className="progress"
+          aria-label="Postup"
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={inView}
+        >
           <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
+            <motion.div
+              className="progress-fill"
+              initial={{ width: 0 }}
+              whileInView={{ width: `${progress}%` }}
+              viewport={inView}
+              transition={{ duration: 1.1, ease: EASE }}
+            />
           </div>
           <p className="progress-label">
             {solvedCount} z {hints.length} hádaniek vyriešených
             <span className="progress-sub"> · {unlockedCount} pečatí odhalených</span>
           </p>
-        </section>
+        </motion.section>
 
         {nextLocked && (
-          <section className="next-reveal">
+          <motion.section
+            className="next-reveal"
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={inView}
+          >
             <p className="next-label">Ďalšia pečať padne o</p>
             {countdown ? (
               <div className="clock">
@@ -351,35 +534,64 @@ export default function App() {
             ) : (
               <p className="next-soon">už čoskoro…</p>
             )}
-          </section>
+          </motion.section>
         )}
 
         {allUnlocked && !allSolved && (
-          <p className="all-done">
+          <motion.p
+            className="all-done"
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={inView}
+            transition={{ duration: 0.6, ease: EASE }}
+          >
             Všetky pečate sú zlomené. Dobrodružstvo môže začať. ✦
-          </p>
+          </motion.p>
         )}
 
-        {allSolved && (
-          <section className="finale">
-            <div className="finale-glyph" aria-hidden="true">✦ ☾ ✦</div>
-            <h2 className="finale-title">{FINALE.title}</h2>
-            <p className="finale-message">{FINALE.message}</p>
-            <p className="finale-sub">Tvoj pravý batoh:</p>
-            <ul className="finale-list">
-              {FINALE.packing.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <AnimatePresence>
+          {allSolved && (
+            <motion.section
+              className="finale"
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 110, damping: 14 }}
+            >
+              <motion.div
+                className="finale-glyph"
+                aria-hidden="true"
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                ✦ ☾ ✦
+              </motion.div>
+              <h2 className="finale-title">{FINALE.title}</h2>
+              <p className="finale-message">{FINALE.message}</p>
+              <p className="finale-sub">Tvoj pravý batoh:</p>
+              <ul className="finale-list">
+                {FINALE.packing.map((item, i) => (
+                  <motion.li
+                    key={item}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + i * 0.1 }}
+                  >
+                    {item}
+                  </motion.li>
+                ))}
+              </ul>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
         <section className="hints" aria-label="Hinty">
           {hints.map((h, i) =>
             h.unlocked ? (
-              <article
+              <TiltCard
                 className={`card revealed${newIds.has(h.id) ? ' is-new' : ''}`}
                 key={h.id}
+                index={i}
+                hoverLift={-6}
               >
                 {newIds.has(h.id) && (
                   <>
@@ -407,16 +619,22 @@ export default function App() {
                     if (!preview) notifyOrganizer(h, attemptNo)
                   }}
                 />
-              </article>
+              </TiltCard>
             ) : (
-              <article className="card locked" key={h.id} aria-disabled="true">
+              <TiltCard
+                className="card locked"
+                key={h.id}
+                index={i}
+                hoverLift={-4}
+                aria-disabled="true"
+              >
                 <div className="card-index">{romanize(i + 1)}</div>
                 <div className="lock-glyph" aria-hidden="true">⛧</div>
                 <p className="card-locked-text">Zapečatené</p>
                 <p className="card-when">
                   odomkne sa {fmt.format(h.date)}
                 </p>
-              </article>
+              </TiltCard>
             ),
           )}
         </section>
@@ -550,17 +768,84 @@ function Guess({ hint, onSolved }) {
   )
 }
 
-function Embers() {
+function TiltCard({ index, className, hoverLift = -6, children, ...rest }) {
+  const rx = useMotionValue(0)
+  const ry = useMotionValue(0)
+  const srx = useSpring(rx, { stiffness: 150, damping: 15 })
+  const sry = useSpring(ry, { stiffness: 150, damping: 15 })
+
+  function onMove(e) {
+    const r = e.currentTarget.getBoundingClientRect()
+    const px = (e.clientX - r.left) / r.width - 0.5
+    const py = (e.clientY - r.top) / r.height - 0.5
+    ry.set(px * 9)
+    rx.set(-py * 9)
+  }
+  function onLeave() {
+    rx.set(0)
+    ry.set(0)
+  }
+
+  return (
+    <motion.article
+      className={className}
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      whileInView="show"
+      viewport={cardInView}
+      whileHover={{ y: hoverLift }}
+      whileTap={{ scale: 0.99 }}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      style={{ rotateX: srx, rotateY: sry, transformPerspective: 900 }}
+      {...rest}
+    >
+      {children}
+    </motion.article>
+  )
+}
+
+function Meteors({ count = 4 }) {
+  const list = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        top: Math.random() * 40,
+        left: 20 + Math.random() * 70,
+        delay: 3 + i * 5 + Math.random() * 4,
+        dur: 2.5 + Math.random() * 2,
+      })),
+    [count],
+  )
+  return (
+    <div className="meteors" aria-hidden="true">
+      {list.map((m, i) => (
+        <span
+          key={i}
+          className="meteor"
+          style={{
+            top: `${m.top}%`,
+            left: `${m.left}%`,
+            animationDelay: `${m.delay}s`,
+            animationDuration: `${m.dur}s`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function Embers({ count = 16 }) {
   const bits = useMemo(
     () =>
-      Array.from({ length: 16 }, () => ({
+      Array.from({ length: count }, () => ({
         left: Math.random() * 100,
         delay: Math.random() * 12,
         dur: 9 + Math.random() * 10,
         size: 2 + Math.random() * 3,
         drift: (Math.random() - 0.5) * 60,
       })),
-    [],
+    [count],
   )
   return (
     <div className="embers" aria-hidden="true">
