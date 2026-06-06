@@ -7,6 +7,7 @@
 //    ADMIN_TO  e-mail, kam majú chodiť hlásenia (ak chýba, použije sa SMTP_USER)
 // =====================================================================
 import nodemailer from 'nodemailer'
+import { solvedEmail } from '../lib/email.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,7 +22,6 @@ export default async function handler(req, res) {
       body = {}
     }
   }
-  const { id, title, answer, attempts } = body || {}
 
   const to = process.env.ADMIN_TO || process.env.SMTP_USER
   if (!to) {
@@ -37,16 +37,13 @@ export default async function handler(req, res) {
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     })
 
-    const pokus = attempts ? `${attempts}. pokus` : 'neznámy pokus'
+    const msg = solvedEmail(body || {})
     await transporter.sendMail({
       from: process.env.NOTIFY_FROM || process.env.SMTP_USER,
       to,
-      subject: `✅ Shehe uhádol pečať ${id ?? '?'} — ${answer ?? ''}`,
-      text:
-        `Shehe práve správne vyplnil pečať.\n\n` +
-        `Pečať: ${title ?? '?'}\n` +
-        `Odpoveď: ${answer ?? '?'}\n` +
-        `Uhádol na: ${pokus}`,
+      subject: msg.subject,
+      text: msg.text,
+      html: msg.html,
     })
 
     return res.status(200).json({ ok: true })

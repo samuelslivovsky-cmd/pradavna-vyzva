@@ -1,16 +1,40 @@
 // =====================================================================
 //  Diagnostický endpoint pre testovaciu stránku (/test.html).
-//   - ?check=1  → vráti, ktoré premenné prostredia sú nastavené (bez hodnôt)
-//   - inak      → pošle TESTOVACÍ e-mail (na ADMIN_TO alebo ?to=...)
-//  Chránené tokenom: ?token=<VITE_PREVIEW_TOKEN> (alebo CRON_SECRET).
+//   - ?check=1       → vráti, ktoré premenné prostredia sú nastavené
+//   - ?type=reminder → ukážka pripomienky pečate (1. pečať)
+//   - ?type=intro    → ukážka úvodného mailu
+//   - ?type=solved   → ukážka hlásenia „Shehe uhádol"
+//   - inak           → jednoduchý testovací e-mail (overenie SMTP)
+//  Posiela na ADMIN_TO (alebo ?to=...). Chránené ?token=<VITE_PREVIEW_TOKEN
+//  alebo CRON_SECRET>.
 // =====================================================================
 import nodemailer from 'nodemailer'
+import { EVENT, HINTS } from '../src/data.js'
+import { renderEmail, sigilEmail, introEmail, solvedEmail } from '../lib/email.js'
 
 function authorized(req) {
   const provided = req.query?.token
   const a = process.env.VITE_PREVIEW_TOKEN
   const b = process.env.CRON_SECRET
   return Boolean(provided && (provided === a || provided === b))
+}
+
+function buildPreview(type) {
+  const url = EVENT.url || ''
+  if (type === 'reminder') return sigilEmail(HINTS[0], url)
+  if (type === 'intro') return introEmail(url)
+  if (type === 'solved') {
+    return solvedEmail({ id: 0, title: 'TEST pečať', answer: 'Testovacia odpoveď', attempts: 1 })
+  }
+  return {
+    subject: '🧪 Test — Pradávna výzva',
+    text: 'Toto je testovací e-mail z diagnostickej stránky. Ak ho čítaš, SMTP funguje. ☾',
+    html: renderEmail({
+      eyebrow: 'Test',
+      title: 'SMTP funguje ☾',
+      lines: ['Toto je testovací e-mail z diagnostickej stránky.', 'Ak ho čítaš, odosielanie funguje.'],
+    }),
+  }
 }
 
 export default async function handler(req, res) {
@@ -30,7 +54,6 @@ export default async function handler(req, res) {
     VITE_PREVIEW_TOKEN: Boolean(process.env.VITE_PREVIEW_TOKEN),
   }
 
-  // iba kontrola konfigurácie — nič sa neposiela
   if (req.query?.check) {
     return res.status(200).json({ ok: true, config })
   }
@@ -51,13 +74,16 @@ export default async function handler(req, res) {
       secure: port === 465,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     })
+
+    const msg = buildPreview(req.query?.type)
     await transporter.sendMail({
       from: process.env.NOTIFY_FROM || process.env.SMTP_USER,
       to,
-      subject: '🧪 Test — Pradávna výzva',
-      text: 'Toto je testovací e-mail z diagnostickej stránky. Ak ho čítaš, SMTP funguje. ☾',
+      subject: msg.subject,
+      text: msg.text,
+      html: msg.html,
     })
-    return res.status(200).json({ ok: true, sentTo: to })
+    return res.status(200).json({ ok: true, sentTo: to, type: req.query?.type || 'generic' })
   } catch (err) {
     return res.status(500).json({ ok: false, error: String(err), config })
   }

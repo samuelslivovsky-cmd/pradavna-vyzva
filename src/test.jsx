@@ -45,6 +45,20 @@ function Test() {
     }
   }
 
+  async function sendType(key, type) {
+    set(key, '… odosielam')
+    try {
+      const r = await fetch(
+        `/api/test-email?type=${type}&token=${encodeURIComponent(TOKEN)}`,
+        { method: 'POST' },
+      )
+      const j = await r.json()
+      set(key, (j.ok ? '✅ ' : '❌ ') + JSON.stringify(j, null, 2))
+    } catch (e) {
+      set(key, 'CHYBA: ' + e + '\n(API beží len na Verceli alebo cez `vercel dev`)')
+    }
+  }
+
   async function sendSolved() {
     set('solved', '… odosielam')
     try {
@@ -119,14 +133,34 @@ function Test() {
 
           <Row
             title="2 · Test e-mailu (SMTP)"
-            desc="Pošle testovací e-mail na ADMIN_TO (alebo SMTP_USER). Overí, že odosielanie naozaj funguje."
+            desc="Pošle jednoduchý testovací e-mail na ADMIN_TO. Overí, že odosielanie naozaj funguje."
             result={out.email}
           >
             <button className="rune-btn" onClick={sendTestEmail}>Poslať testovací e-mail</button>
           </Row>
 
           <Row
-            title={'3 · Hlásenie „Shehe uhádol"'}
+            title="3 · Ukážka: pripomienka pečate"
+            desc="Pošle na ADMIN_TO ukážku e-mailu, ktorý Shehe dostane pri odomknutí novej pečate — nech vidíš, ako vyzerá."
+            result={out.reminder}
+          >
+            <button className="rune-btn" onClick={() => sendType('reminder', 'reminder')}>
+              Poslať ukážku pripomienky
+            </button>
+          </Row>
+
+          <Row
+            title="4 · Ukážka: úvodný mail"
+            desc="Pošle na ADMIN_TO ukážku úvodného (uvítacieho) e-mailu pre Shehe."
+            result={out.intro}
+          >
+            <button className="rune-btn" onClick={() => sendType('intro', 'intro')}>
+              Poslať úvodný mail (ukážka)
+            </button>
+          </Row>
+
+          <Row
+            title={'5 · Hlásenie „Shehe uhádol"'}
             desc="Spustí presne tú istú cestu ako pri správnej odpovedi (endpoint /api/solved)."
             result={out.solved}
           >
@@ -134,7 +168,7 @@ function Test() {
           </Row>
 
           <Row
-            title="4 · Browser notifikácia"
+            title="6 · Browser notifikácia"
             desc="Vyžiada povolenie a vyskúša lokálnu notifikáciu v prehliadači."
             result={out.notif}
           >
@@ -142,7 +176,7 @@ function Test() {
           </Row>
 
           <Row
-            title="5 · Kalendár (.ics)"
+            title="7 · Kalendár (.ics)"
             desc="Vygeneruje a stiahne kalendárový súbor a vypíše počet udalostí."
             result={out.ics}
           >

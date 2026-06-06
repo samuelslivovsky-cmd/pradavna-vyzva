@@ -142,15 +142,31 @@ http://localhost:5173/test.html?token=<TOKEN>     # lokálne (API testy idú až
 https://tvoj-web.vercel.app/test.html?token=<TOKEN>
 ```
 
-Obsahuje 5 testov:
+Obsahuje 7 testov:
 1. **Konfigurácia SMTP** — vypíše, ktoré env premenné sú nastavené (bez hodnôt).
-2. **Test e-mailu (SMTP)** — pošle testovací e-mail na `ADMIN_TO`.
-3. **Hlásenie „Shehe uhádol"** — spustí endpoint `/api/solved` so vzorovými dátami.
-4. **Browser notifikácia** — vyžiada povolenie a vyskúša notifikáciu.
-5. **Kalendár (.ics)** — vygeneruje a stiahne kalendár (overí počet udalostí).
+2. **Test e-mailu (SMTP)** — pošle jednoduchý testovací e-mail na `ADMIN_TO`.
+3. **Ukážka: pripomienka pečate** — pošle ukážku e-mailu, ktorý Shehe dostane pri
+   odomknutí pečate (nech vidíš dizajn).
+4. **Ukážka: úvodný mail** — pošle ukážku úvodného (uvítacieho) e-mailu pre Shehe.
+5. **Hlásenie „Shehe uhádol"** — spustí endpoint `/api/solved` so vzorovými dátami.
+6. **Browser notifikácia** — vyžiada povolenie a vyskúša notifikáciu.
+7. **Kalendár (.ics)** — vygeneruje a stiahne kalendár (overí počet udalostí).
 
-> Body 1–3 (API) fungujú len po nasadení na Vercel alebo cez `vercel dev`.
-> Body 4–5 fungujú aj v `npm run dev`. Stránka má `noindex` a je za tokenom.
+> Body 1–5 (API) fungujú len po nasadení na Vercel alebo cez `vercel dev`.
+> Body 6–7 fungujú aj v `npm run dev`. Stránka má `noindex` a je za tokenom.
+
+### Poslať úvodný mail naozaj Shehe-mu
+Ukážky chodia na `ADMIN_TO`. Keď chceš poslať úvodný mail priamo Shehe-mu,
+zavolaj (po nasadení) s parametrom `to`:
+```
+https://tvoj-web.vercel.app/api/test-email?type=intro&to=scool36@gmail.com&token=<TOKEN>
+```
+
+## Dizajn e-mailov
+
+Všetky e-maily (pripomienka pečate, odchod/koniec, hlásenie „Shehe uhádol",
+úvodný mail) zdieľajú jednu mystickú HTML šablónu v [`lib/email.js`](lib/email.js)
+(tmavé pozadie, zlaté akcenty, ☾). Texty ľahko upravíš tam.
 
 ## Nasadenie na Vercel (zadarmo)
 

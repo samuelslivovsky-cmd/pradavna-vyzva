@@ -4,17 +4,12 @@
 //  pečate (alebo odchodu/konca) pošle Shehe-mu mystický e-mail.
 //  V iné dni nepošle nič.
 //
-//  Potrebné premenné prostredia (Vercel → Project → Settings → Environment):
-//    SMTP_HOST   napr. smtp.gmail.com
-//    SMTP_PORT   napr. 465
-//    SMTP_USER   tvoj odosielací e-mail
-//    SMTP_PASS   app-heslo (Gmail: "App password", nie bežné heslo!)
-//    NOTIFY_TO   e-mail Shehe-ho
-//    NOTIFY_FROM (voliteľné) "Pradávna výzva <ty@gmail.com>"
-//    CRON_SECRET (Vercel ho pri cron volaní pošle ako Bearer token)
+//  Premenné prostredia: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
+//  NOTIFY_TO, NOTIFY_FROM (voliteľné), CRON_SECRET.
 // =====================================================================
 import nodemailer from 'nodemailer'
 import { EVENT, HINTS } from '../src/data.js'
+import { sigilEmail, departureEmail, endEmail } from '../lib/email.js'
 
 // Dnešný dátum v slovenskom čase ako 'YYYY-MM-DD'
 function todayISO() {
@@ -28,47 +23,12 @@ function todayISO() {
 }
 
 function buildMessage(today) {
-  const link = EVENT.url || ''
-  const linkLine = link ? `\n\n${link}` : ''
-  const linkHtml = link
-    ? `<p style="margin-top:24px"><a href="${link}" style="color:#d9b56b">Otvoriť Pradávnu výzvu →</a></p>`
-    : ''
-
+  const url = EVENT.url || ''
   const hint = HINTS.find((h) => h.reveal === today)
-  if (hint) {
-    return {
-      subject: '☾ Padla nová pečať, Shehe',
-      text: `${hint.title}\n\nNová pečať čaká. Otvor Pradávnu výzvu a odhaľ, čo ti šepká.${linkLine}`,
-      html: emailHtml('Padla nová pečať ☾', hint.title, 'Otvor výzvu a odhaľ, čo ti šepká.', linkHtml),
-    }
-  }
-  if (EVENT.departure === today) {
-    return {
-      subject: '🎒 Dnes sa vyráža, Shehe',
-      text: `Dobrodružstvo začína. Dúfam, že máš zbalené to správne…${linkLine}`,
-      html: emailHtml('Dobrodružstvo začína 🎒', 'Dnes sa vyráža', 'Dúfam, že máš zbalené to správne…', linkHtml),
-    }
-  }
-  if (EVENT.end === today) {
-    return {
-      subject: '🏁 Koniec dobrodružstva',
-      text: 'Posledný deň výpravy. ☾',
-      html: emailHtml('Koniec dobrodružstva 🏁', 'Posledný deň výpravy', 'Bolo to dobrodružstvo.', ''),
-    }
-  }
+  if (hint) return sigilEmail(hint, url)
+  if (EVENT.departure === today) return departureEmail(url)
+  if (EVENT.end === today) return endEmail()
   return null
-}
-
-function emailHtml(eyebrow, title, body, linkHtml) {
-  return `<!doctype html><html><body style="margin:0;background:#0a0810;padding:40px 16px;font-family:Georgia,serif">
-    <div style="max-width:480px;margin:0 auto;background:linear-gradient(180deg,#140f24,#0a0810);border:1px solid rgba(217,181,107,.3);border-radius:14px;padding:32px;text-align:center;color:#e8e2d4">
-      <div style="font-size:34px;color:#d9b56b">☾</div>
-      <p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#b89653;margin:8px 0 16px">${eyebrow}</p>
-      <h1 style="color:#d9b56b;font-size:22px;margin:0 0 12px">${title}</h1>
-      <p style="color:#9b93a8;font-size:16px;line-height:1.6;margin:0">${body}</p>
-      ${linkHtml}
-    </div>
-  </body></html>`
 }
 
 export default async function handler(req, res) {
