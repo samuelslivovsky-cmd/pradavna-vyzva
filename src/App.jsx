@@ -268,6 +268,18 @@ export default function App() {
       })
   }
 
+  // zápis pokusu (čo Sehe skúšal) — len v ostrej hre, nie v náhľade
+  function logAttempt(hint, payload) {
+    if (preview) return
+    fetch('/api/attempt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: hint.id, ...payload }),
+    }).catch(() => {
+      /* nevadí */
+    })
+  }
+
   // --- finále: všetkých 19 vyriešených ---
   const allSolved = solvedCount === hints.length
   const finaleFired = useRef(false)
@@ -610,6 +622,8 @@ export default function App() {
                 {h.note && <p className="card-note">{h.note}</p>}
                 <Guess
                   hint={h}
+                  onGuess={(value, correct) => logAttempt(h, { value, correct })}
+                  onReveal={() => logAttempt(h, { revealed: true })}
                   onSolved={(attemptNo) => {
                     setSolved((prev) => {
                       const next = new Set(prev)
@@ -664,7 +678,7 @@ const MISS_LINES = [
   'Blízko? Možno. Správne? Nie.',
 ]
 
-function Guess({ hint, onSolved }) {
+function Guess({ hint, onSolved, onGuess, onReveal }) {
   const key = `sehe.guess.${hint.id}`
   const [state, setState] = useState(() => {
     const fallback = { attempts: 0, solved: false, revealed: false, whisper: false }
@@ -689,7 +703,9 @@ function Guess({ hint, onSolved }) {
   function submit(e) {
     e.preventDefault()
     if (state.solved || state.revealed || !value.trim()) return
-    if (isCorrect(value, hint)) {
+    const correct = isCorrect(value, hint)
+    onGuess && onGuess(value.trim(), correct)
+    if (correct) {
       persist({ ...state, solved: true })
       onSolved && onSolved(state.attempts + 1)
     } else {
@@ -758,7 +774,10 @@ function Guess({ hint, onSolved }) {
           <button
             type="button"
             className="reveal-btn"
-            onClick={() => persist({ ...state, revealed: true })}
+            onClick={() => {
+              persist({ ...state, revealed: true })
+              onReveal && onReveal()
+            }}
           >
             Vzdávam sa — prezradiť odpoveď
           </button>

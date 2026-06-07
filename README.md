@@ -168,6 +168,29 @@ Všetky e-maily (pripomienka pečate, odchod/koniec, hlásenie „Sehe uhádol",
 úvodný mail) zdieľajú jednu mystickú HTML šablónu v [`lib/email.js`](lib/email.js)
 (tmavé pozadie, zlaté akcenty, ☾). Texty ľahko upravíš tam.
 
+## Preview: Sehe-ho odpovede
+
+Stránka [`attempts.html`](attempts.html) ukáže **čo Sehe skúšal pri každej pečati**
+(všetky pokusy, správne/zlé, aj keď sa vzdal). Je **len na čítanie** — volá iba
+`GET /api/attempts` (nič nezapisuje). Za tokenom:
+
+```
+https://pradavna-vyzva.vercel.app/attempts.html?token=<TOKEN>
+```
+
+Ako to funguje: hra (na Sehe-ho zariadení) pri každom hádaní zapíše pokus cez
+`POST /api/attempt` do **Vercel KV**. Preview stránka ich len číta.
+
+### Nastavenie Vercel KV (nutné, aby sa pokusy ukladali)
+1. Vercel → projekt → **Storage → Create Database → KV** (Upstash, free tier).
+2. **Connect to Project** — Vercel automaticky pridá premenné `KV_REST_API_URL`
+   a `KV_REST_API_TOKEN`.
+3. **Redeploy** projektu.
+
+Bez KV appka funguje normálne, len sa pokusy neukladajú a `attempts.html` to
+oznámi. Pokusy sa **nezapisujú v režime náhľadu** (`?preview=…`), aby tvoje
+testovanie neznečistilo dáta.
+
 ## Nasadenie na Vercel (zadarmo)
 
 1. Pushni priečinok na GitHub.
