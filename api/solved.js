@@ -1,6 +1,6 @@
 // =====================================================================
 //  Vercel serverless funkcia — pošle TEBE (organizátorovi) e-mail vždy,
-//  keď Shehe správne uhádne nejakú pečať. Volá ju prehliadač pri správnej
+//  keď Sehe správne uhádne nejakú pečať. Volá ju prehliadač pri správnej
 //  odpovedi (každá pečať sa nahlási len raz).
 //
 //  Premenné prostredia (okrem SMTP_* ako v notify.js):

@@ -99,7 +99,7 @@ function Test() {
       const ics = buildICS()
       const count = (ics.match(/BEGIN:VEVENT/g) || []).length
       downloadICS()
-      set('ics', `✅ Stiahnuté „pradavna-vyzva-shehe.ics" — počet udalostí: ${count}`)
+      set('ics', `✅ Stiahnuté „pradavna-vyzva-sehe.ics" — počet udalostí: ${count}`)
     } catch (e) {
       set('ics', 'CHYBA: ' + e)
     }
@@ -141,7 +141,7 @@ function Test() {
 
           <Row
             title="3 · Ukážka: pripomienka pečate"
-            desc="Pošle na ADMIN_TO ukážku e-mailu, ktorý Shehe dostane pri odomknutí novej pečate — nech vidíš, ako vyzerá."
+            desc="Pošle na ADMIN_TO ukážku e-mailu, ktorý Sehe dostane pri odomknutí novej pečate — nech vidíš, ako vyzerá."
             result={out.reminder}
           >
             <button className="rune-btn" onClick={() => sendType('reminder', 'reminder')}>
@@ -151,7 +151,7 @@ function Test() {
 
           <Row
             title="4 · Ukážka: úvodný mail"
-            desc="Pošle na ADMIN_TO ukážku úvodného (uvítacieho) e-mailu pre Shehe."
+            desc="Pošle na ADMIN_TO ukážku úvodného (uvítacieho) e-mailu pre Sehe."
             result={out.intro}
           >
             <button className="rune-btn" onClick={() => sendType('intro', 'intro')}>
@@ -160,7 +160,7 @@ function Test() {
           </Row>
 
           <Row
-            title={'5 · Hlásenie „Shehe uhádol"'}
+            title={'5 · Hlásenie „Sehe uhádol"'}
             desc="Spustí presne tú istú cestu ako pri správnej odpovedi (endpoint /api/solved)."
             result={out.solved}
           >

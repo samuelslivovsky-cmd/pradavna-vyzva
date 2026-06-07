@@ -3,7 +3,7 @@
 //   - ?check=1       → vráti, ktoré premenné prostredia sú nastavené
 //   - ?type=reminder → ukážka pripomienky pečate (1. pečať)
 //   - ?type=intro    → ukážka úvodného mailu
-//   - ?type=solved   → ukážka hlásenia „Shehe uhádol"
+//   - ?type=solved   → ukážka hlásenia „Sehe uhádol"
 //   - inak           → jednoduchý testovací e-mail (overenie SMTP)
 //  Posiela na ADMIN_TO (alebo ?to=...). Chránené ?token=<VITE_PREVIEW_TOKEN
 //  alebo CRON_SECRET>.

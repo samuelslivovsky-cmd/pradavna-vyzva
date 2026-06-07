@@ -1,5 +1,5 @@
 // =====================================================================
-//  Generovanie .ics kalendára — pripomienky pre Shehe.
+//  Generovanie .ics kalendára — pripomienky pre Sehe.
 //  Po pridaní do telefónu mu kalendár sám pripomenie každý deň odomknutia
 //  (funguje aj keď je stránka zatvorená, bez servera).
 // =====================================================================
@@ -42,7 +42,7 @@ function fold(line) {
 }
 
 function event({ uid, date, allDay, summary, description }) {
-  const lines = ['BEGIN:VEVENT', `UID:${uid}@shehe`, 'DTSTAMP:20260101T000000Z']
+  const lines = ['BEGIN:VEVENT', `UID:${uid}@sehe`, 'DTSTAMP:20260101T000000Z']
   if (allDay) {
     lines.push(`DTSTART;VALUE=DATE:${toICSDate(date)}`)
   } else {
@@ -66,7 +66,7 @@ export function buildICS() {
       date: h.reveal,
       allDay: false,
       summary: `🔮 ${h.title}`,
-      description: `Padla nová pečať, Shehe. Otvor výzvu a odhaľ, čo ti šepká.${link}`,
+      description: `Padla nová pečať, Sehe. Otvor výzvu a odhaľ, čo ti šepká.${link}`,
     }),
   )
 
@@ -90,10 +90,10 @@ export function buildICS() {
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Shehe//Pradavna vyzva//SK',
+    'PRODID:-//Sehe//Pradavna vyzva//SK',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Pradávna výzva — Shehe',
+    'X-WR-CALNAME:Pradávna výzva — Sehe',
     ...events,
     'END:VCALENDAR',
   ].join('\r\n')
@@ -104,7 +104,7 @@ export function downloadICS() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'pradavna-vyzva-shehe.ics'
+  a.download = 'pradavna-vyzva-sehe.ics'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

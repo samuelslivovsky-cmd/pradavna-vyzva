@@ -1,7 +1,7 @@
 // =====================================================================
 //  Vercel serverless funkcia + Cron — denné e-mailové upozornenie.
 //  Spúšťa ju Vercel cron (viď vercel.json) raz denne. V deň odomknutia
-//  pečate (alebo odchodu/konca) pošle Shehe-mu mystický e-mail.
+//  pečate (alebo odchodu/konca) pošle Sehe-mu mystický e-mail.
 //  V iné dni nepošle nič.
 //
 //  Premenné prostredia: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,

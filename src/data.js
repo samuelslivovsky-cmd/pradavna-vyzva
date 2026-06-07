@@ -17,7 +17,7 @@
 //               diakritiky — stránka si vstup sama normalizuje). Stačí kľúčové
 //               slovo; uzná sa aj veta, ktorá ho obsahuje (napr. 'sedak').
 //   Pozn.: odpovede sú v tomto súbore (klientska hra), takže technicky zdatný
-//   Shehe by ich vedel nájsť v zdrojáku. Pre zábavu to stačí.
+//   Sehe by ich vedel nájsť v zdrojáku. Pre zábavu to stačí.
 //
 //  Dátum (reveal) = deň, od ktorého sa pečať odomkne ('YYYY-MM-DD').
 // =====================================================================
@@ -39,7 +39,7 @@ export const WHISPER_AFTER = 3
 export const FINALE = {
   title: 'Posledná pravda odhalená',
   message:
-    'Prešiel si všetkými pečaťami, Shehe. Oddelil si zrno od pliev a dokázal, ' +
+    'Prešiel si všetkými pečaťami, Sehe. Oddelil si zrno od pliev a dokázal, ' +
     'že ťa žiadna hmla nezmätie.\n' +
     'Toto je tvoj pravý batoh — o zvyšok a o to najdôležitejšie sa postarajú ' +
     'tvoji druhovia. ☾',
@@ -268,7 +268,7 @@ export const HINTS = [
     title: 'XIX. pečať — Pravda',
     riddle:
       'Nabi srdce aj stroje: vezmi kameň plný blesku, lebo tam hore niet zásuviek.\n\n' +
-      'A teraz počúvaj dobre, Shehe:\n' +
+      'A teraz počúvaj dobre, Sehe:\n' +
       'nie všetko, čo ti pečate šepkali, bola pravda. Niektoré veci ťa mali len zmiasť.\n' +
       'Pravý batoh spoznáš až vtedy, keď oddelíš zrno od pliev.\n' +
       'Zbaľ múdro — o zvyšok a o to najdôležitejšie sa postarajú tvoji druhovia. ☾',

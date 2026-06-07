@@ -10,7 +10,7 @@ import {
 import { EVENT, HINTS, MAX_ATTEMPTS, WHISPER_AFTER, FINALE } from './data.js'
 import { downloadICS } from './calendar.js'
 
-const SEEN_KEY = 'shehe.seen.sigils'
+const SEEN_KEY = 'sehe.seen.sigils'
 
 // --- animačné varianty (framer-motion) ---------------------------------
 const EASE = [0.22, 1, 0.36, 1]
@@ -71,7 +71,7 @@ function loadSolvedSet() {
   if (typeof localStorage === 'undefined') return s
   for (const h of HINTS) {
     try {
-      const v = JSON.parse(localStorage.getItem(`shehe.guess.${h.id}`) || 'null')
+      const v = JSON.parse(localStorage.getItem(`sehe.guess.${h.id}`) || 'null')
       if (v && v.solved) s.add(h.id)
     } catch {
       /* ignore */
@@ -181,7 +181,7 @@ export default function App() {
       setNewIds(new Set(fresh))
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         const last = hints.find((h) => h.id === fresh[fresh.length - 1])
-        new Notification('Padla nová pečať, Shehe ☾', {
+        new Notification('Padla nová pečať, Sehe ☾', {
           body: last ? last.title : 'Otvor Pradávnu výzvu a odhaľ ju.',
         })
       }
@@ -231,14 +231,14 @@ export default function App() {
     moonClicks.current += 1
     if (moonClicks.current >= 7) {
       moonClicks.current = 0
-      showToast('Shehe, prestaň klikať a choď radšej baliť! 🎒')
+      showToast('Sehe, prestaň klikať a choď radšej baliť! 🎒')
       setBurst((b) => b + 1)
     }
   }
 
   // --- hlásenie organizátorovi pri správnej odpovedi (každá pečať raz) ---
   function notifyOrganizer(hint, attemptNo) {
-    const k = `shehe.notified.${hint.id}`
+    const k = `sehe.notified.${hint.id}`
     try {
       if (localStorage.getItem(k)) return
     } catch {
@@ -401,7 +401,7 @@ export default function App() {
             Pradávna výzva
           </motion.h1>
           <motion.p className="dedication" variants={fadeUp}>
-            pre pútnika menom <span className="name">Shehe</span>
+            pre pútnika menom <span className="name">Sehe</span>
           </motion.p>
           <motion.div
             className="portrait"
@@ -411,8 +411,8 @@ export default function App() {
             whileHover={{ scale: 1.06, rotate: 1 }}
           >
             <img
-              src="./shehe.jpg"
-              alt="Shehe"
+              src="./sehe.jpg"
+              alt="Sehe"
               onError={(e) => {
                 e.currentTarget.parentElement.style.display = 'none'
               }}
@@ -665,7 +665,7 @@ const MISS_LINES = [
 ]
 
 function Guess({ hint, onSolved }) {
-  const key = `shehe.guess.${hint.id}`
+  const key = `sehe.guess.${hint.id}`
   const [state, setState] = useState(() => {
     const fallback = { attempts: 0, solved: false, revealed: false, whisper: false }
     try {

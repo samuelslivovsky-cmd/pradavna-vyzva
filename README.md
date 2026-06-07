@@ -76,9 +76,9 @@ ferrát (prilba/brzda → kamoši).
 
 Odchod: **9.7.** · Koniec: **12.7.**
 
-## Funkcie pre Shehe
+## Funkcie pre Sehe
 
-- **Hádanie odpovede** — v každej odomknutej pečati je pole, kam Shehe napíše,
+- **Hádanie odpovede** — v každej odomknutej pečati je pole, kam Sehe napíše,
   o čo ide. Vstup sa normalizuje (malé písmená, bez diakritiky), uznáva synonymá.
   Po `WHISPER_AFTER` pokusoch sa ponúkne jemná **nápoveda („Šepot ducha")**,
   po `MAX_ATTEMPTS` tlačidlo „Prezradiť odpoveď". Stav si pamätá (`localStorage`).
@@ -89,7 +89,7 @@ Odchod: **9.7.** · Koniec: **12.7.**
 - **Animácia lámania pečate** — pri novej pečati sa vosková pečať rozlomí.
 - **Lietajúce uhlíky** v pozadí pre atmosféru.
 - **Easter egg** — 7× klik na mesiac ☾.
-- **PWA** — `manifest.webmanifest` + service worker → Shehe si môže pridať
+- **PWA** — `manifest.webmanifest` + service worker → Sehe si môže pridať
   stránku „na plochu" telefónu a otvárať ako appku (funguje aj offline).
 - **Náhľad pri zdieľaní** — OG/Twitter meta + `public/og.svg`, takže link na
   Messenger/WhatsApp ukáže pekný mystický náhľad.
@@ -145,18 +145,18 @@ https://tvoj-web.vercel.app/test.html?token=<TOKEN>
 Obsahuje 7 testov:
 1. **Konfigurácia SMTP** — vypíše, ktoré env premenné sú nastavené (bez hodnôt).
 2. **Test e-mailu (SMTP)** — pošle jednoduchý testovací e-mail na `ADMIN_TO`.
-3. **Ukážka: pripomienka pečate** — pošle ukážku e-mailu, ktorý Shehe dostane pri
+3. **Ukážka: pripomienka pečate** — pošle ukážku e-mailu, ktorý Sehe dostane pri
    odomknutí pečate (nech vidíš dizajn).
-4. **Ukážka: úvodný mail** — pošle ukážku úvodného (uvítacieho) e-mailu pre Shehe.
-5. **Hlásenie „Shehe uhádol"** — spustí endpoint `/api/solved` so vzorovými dátami.
+4. **Ukážka: úvodný mail** — pošle ukážku úvodného (uvítacieho) e-mailu pre Sehe.
+5. **Hlásenie „Sehe uhádol"** — spustí endpoint `/api/solved` so vzorovými dátami.
 6. **Browser notifikácia** — vyžiada povolenie a vyskúša notifikáciu.
 7. **Kalendár (.ics)** — vygeneruje a stiahne kalendár (overí počet udalostí).
 
 > Body 1–5 (API) fungujú len po nasadení na Vercel alebo cez `vercel dev`.
 > Body 6–7 fungujú aj v `npm run dev`. Stránka má `noindex` a je za tokenom.
 
-### Poslať úvodný mail naozaj Shehe-mu
-Ukážky chodia na `ADMIN_TO`. Keď chceš poslať úvodný mail priamo Shehe-mu,
+### Poslať úvodný mail naozaj Sehe-mu
+Ukážky chodia na `ADMIN_TO`. Keď chceš poslať úvodný mail priamo Sehe-mu,
 zavolaj (po nasadení) s parametrom `to`:
 ```
 https://tvoj-web.vercel.app/api/test-email?type=intro&to=scool36@gmail.com&token=<TOKEN>
@@ -164,7 +164,7 @@ https://tvoj-web.vercel.app/api/test-email?type=intro&to=scool36@gmail.com&token
 
 ## Dizajn e-mailov
 
-Všetky e-maily (pripomienka pečate, odchod/koniec, hlásenie „Shehe uhádol",
+Všetky e-maily (pripomienka pečate, odchod/koniec, hlásenie „Sehe uhádol",
 úvodný mail) zdieľajú jednu mystickú HTML šablónu v [`lib/email.js`](lib/email.js)
 (tmavé pozadie, zlaté akcenty, ☾). Texty ľahko upravíš tam.
 
@@ -181,7 +181,7 @@ Alebo bez GitHubu: `npm i -g vercel` a v priečinku spusti `vercel`.
 
 Funkcia [`api/notify.js`](api/notify.js) sa spúšťa **raz denne** (cron v
 [`vercel.json`](vercel.json), 06:00 UTC = 08:00 SELČ). V deň odomknutia pečate
-(alebo odchodu/konca) pošle Shehe-mu mystický e-mail; inak nepošle nič.
+(alebo odchodu/konca) pošle Sehe-mu mystický e-mail; inak nepošle nič.
 
 ### 1. Nastav premenné prostredia na Verceli
 Vercel → projekt → **Settings → Environment Variables**:
@@ -192,10 +192,10 @@ Vercel → projekt → **Settings → Environment Variables**:
 | `SMTP_PORT` | `465` |
 | `SMTP_USER` | tvoj odosielací e-mail |
 | `SMTP_PASS` | **App password** (nie bežné heslo) |
-| `NOTIFY_TO` | e-mail Shehe-ho |
+| `NOTIFY_TO` | e-mail Sehe-ho |
 | `NOTIFY_FROM` | *(voliteľné)* `Pradávna výzva <ty@gmail.com>` |
 | `CRON_SECRET` | ľubovoľný náhodný reťazec (Vercel ho pri crone pošle sám) |
-| `ADMIN_TO` | *(voliteľné)* tvoj e-mail pre hlásenia „Shehe uhádol" (ak chýba, použije sa `SMTP_USER`) |
+| `ADMIN_TO` | *(voliteľné)* tvoj e-mail pre hlásenia „Sehe uhádol" (ak chýba, použije sa `SMTP_USER`) |
 
 **Gmail App password:** Google účet → Bezpečnosť → 2-krokové overenie (musí byť
 zapnuté) → *App passwords* → vygeneruj heslo a vlož ho do `SMTP_PASS`.
@@ -226,8 +226,8 @@ Po nasadení môžeš funkciu zavolať ručne:
 > garantovaný na minútu (môže meškať aj hodiny). Pre toto použitie (stačí, že
 > mail príde v správny deň) to úplne postačuje.
 
-### Hlásenie „Shehe uhádol" na tvoj e-mail
-Funkcia [`api/solved.js`](api/solved.js) pošle e-mail **tebe** vždy, keď Shehe
+### Hlásenie „Sehe uhádol" na tvoj e-mail
+Funkcia [`api/solved.js`](api/solved.js) pošle e-mail **tebe** vždy, keď Sehe
 správne uhádne pečať (každá pečať sa nahlási iba raz). V e-maile je číslo pečate,
 správna odpoveď a na koľký pokus ju trafil. Cieľová adresa = `ADMIN_TO`
 (alebo `SMTP_USER`). Používa rovnaké SMTP nastavenia ako vyššie — netreba nič
