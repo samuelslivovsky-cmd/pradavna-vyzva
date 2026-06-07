@@ -43,7 +43,8 @@ export default async function handler(req, res) {
   }
 
   const today = todayISO()
-  const msg = buildMessage(today)
+  // ?force=1 → vynúti odoslanie ukážky (1. pečať) hocikedy, na overenie cronu
+  const msg = req.query?.force ? sigilEmail(HINTS[0]) : buildMessage(today)
   if (!msg) {
     return res.status(200).json({ ok: true, sent: false, today })
   }

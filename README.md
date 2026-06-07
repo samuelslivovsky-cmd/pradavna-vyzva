@@ -206,10 +206,25 @@ Po nasadení je cron aktívny automaticky (Hobby plán = max. raz denne, čo sta
 Skontroluješ ho vo Vercel → **Settings → Cron Jobs**.
 
 ### 3. Test
-Po nasadení môžeš funkciu zavolať ručne (pošle len ak je dnes deň odomknutia):
-`https://TVOJ-WEB.vercel.app/api/notify?key=CRON_SECRET`
+Po nasadení môžeš funkciu zavolať ručne:
+- `https://TVOJ-WEB.vercel.app/api/notify?key=CRON_SECRET` — spustí presne to, čo
+  cron: ak je dnes deň odomknutia, pošle; inak vráti `{ sent: false }`.
+- `...?key=CRON_SECRET&force=1` — **vynúti** odoslanie ukážky (1. pečať) na
+  `NOTIFY_TO` hocikedy, takže overíš celú cestu cronu aj mimo dňa odomknutia.
 
 > Pozn.: cron beží v UTC. `0 6 * * *` = ráno o 8:00 nášho letného času.
+
+### Ako overiť cron na Verceli
+1. **Dashboard → projekt → Settings → Cron Jobs** — po nasadení tu uvidíš
+   zaregistrovaný cron, jeho rozvrh, **posledné a najbližšie spustenie** a stav.
+2. **Logy** — Dashboard → projekt → **Logs** (alebo „View Logs" pri cron jobe)
+   ukážu každé spustenie `/api/notify` vrátane návratu (sent true/false).
+3. **Ručné spustenie** — otvor `...?key=CRON_SECRET` (viď vyššie) a pozri JSON;
+   `...&force=1` rovno pošle ukážkový mail na `NOTIFY_TO`.
+
+> ⚠️ **Hobby (free) plán:** cron beží **max. raz denne** a čas spustenia nie je
+> garantovaný na minútu (môže meškať aj hodiny). Pre toto použitie (stačí, že
+> mail príde v správny deň) to úplne postačuje.
 
 ### Hlásenie „Shehe uhádol" na tvoj e-mail
 Funkcia [`api/solved.js`](api/solved.js) pošle e-mail **tebe** vždy, keď Shehe
