@@ -41,8 +41,13 @@ function App() {
 
   const data = state.data
   const attempts = data?.attempts || {}
+  const proofs = data?.proofs || {}
   const totalTries = Object.values(attempts).reduce((n, l) => n + l.length, 0)
-  const solvedCount = HINTS.filter((h) => (attempts[h.id] || []).some((a) => a.correct)).length
+  const solvedCount = HINTS.filter((h) =>
+    h.type === 'quest'
+      ? Boolean(proofs[h.id])
+      : (attempts[h.id] || []).some((a) => a.correct),
+  ).length
 
   return (
     <div className="page">
@@ -78,6 +83,38 @@ function App() {
         {data && data.ok && (
           <section className="hints">
             {HINTS.map((h) => {
+              if (h.type === 'quest') {
+                const proof = proofs[h.id]
+                return (
+                  <article className="card revealed" key={h.id} style={{ textAlign: 'left' }}>
+                    <div className="att-head">
+                      <h2 className="card-title" style={{ margin: 0 }}>{h.title}</h2>
+                      <span className={`att-status ${proof ? 'st-ok' : 'st-none'}`}>
+                        {proof ? 'Splnené' : 'Čaká'}
+                      </span>
+                    </div>
+                    <p className="att-answer">Úloha: <strong>{h.task || h.riddle}</strong></p>
+                    {!proof ? (
+                      <p className="att-empty">— zatiaľ žiadny dôkaz —</p>
+                    ) : (
+                      <div className="att-proof">
+                        {proof.text && <p className="att-proof-text">„{proof.text}"</p>}
+                        {proof.photo && (
+                          <img
+                            className="att-proof-img"
+                            src={proof.photo}
+                            alt="dôkaz"
+                            style={{ maxWidth: '100%', borderRadius: 12 }}
+                          />
+                        )}
+                        {proof.t && (
+                          <span className="att-time">{timeFmt.format(new Date(proof.t))}</span>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                )
+              }
               const list = attempts[h.id] || []
               const st = statusOf(list)
               return (

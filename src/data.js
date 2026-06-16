@@ -276,4 +276,189 @@ export const HINTS = [
     answer: 'Powerbank',
     accept: ['powerbank', 'power bank', 'externa bater', 'nabijacka'],
   },
+
+  // ===================================================================
+  //  PEČATE ÚLOH (type: 'quest') — Sehe nehádá vec, ale dostane konkrétnu
+  //  úlohu do reálneho sveta a pošle DÔKAZ (text + voliteľná fotka).
+  //  Po odoslaní dôkazu sa pečať ráta ako splnená (do postupu aj finále).
+  //  Polia: type:'quest', reveal, title, riddle (mystický úvod), task
+  //  (konkrétne zadanie), proofPrompt (čo poslať). BEZ answer/accept.
+  //  Úlohy môžu byť pokojne odveci — majú hlavne zabaviť.
+  //  V poli sú zámerne na konci; appka si HINTS zoradí podľa dátumu sama.
+  // ===================================================================
+  {
+    id: 20,
+    type: 'quest',
+    reveal: '2026-06-17',
+    title: 'Pečať úlohy — Spevácka obeta',
+    riddle:
+      'Duchy hôr sú hluché na výhovorky, no zato túžia po piesni.\n' +
+      'Len hlas, ktorý sa nebojí hanby, otvorí túto pečať.',
+    task:
+      'Nahraj 15 sekúnd, ako spievaš refrén pesničky, ktorú úprimne neznášaš. ' +
+      'Falošne, nahlas, bez milosti.',
+    proofPrompt: 'Pošli dôkaz: krátky popis (akú pieseň) a ideálne fotku/screenshot.',
+    note: '',
+  },
+  {
+    id: 21,
+    type: 'quest',
+    reveal: '2026-06-21',
+    title: 'Pečať úlohy — Portrét naslepo',
+    riddle:
+      'Pravú podobu pútnika nezachytí oko, ale slepá ruka.\n' +
+      'Nakresli sám seba tak, ako ťa vidia duchovia — bez svetla zraku.',
+    task:
+      'Nakresli svoj autoportrét — slabšou rukou a so zatvorenými očami. ' +
+      'Žiadne opravy, žiadne pozeranie.',
+    proofPrompt: 'Pošli fotku výtvoru (a priznaj, ktorou rukou).',
+    note: '',
+  },
+  {
+    id: 22,
+    type: 'quest',
+    reveal: '2026-06-23',
+    title: 'Pečať úlohy — Pocta štvornohému',
+    riddle:
+      'Na cestu ťa požehná len tvor, čo nepozná tvoje meno.\n' +
+      'Nájdi ho, ukloň sa jeho pánovi a vyžiadaj si znamenie.',
+    task:
+      'Nájdi cudzieho psa, slušne popros majiteľa a odfoť sa s ním. ' +
+      'Bez psa sa pečať nezlomí.',
+    proofPrompt: 'Pošli spoločnú fotku (a meno psa, ak ti ho prezradili).',
+    note: '',
+  },
+  {
+    id: 23,
+    type: 'quest',
+    reveal: '2026-06-25',
+    title: 'Pečať úlohy — Železná vôľa',
+    riddle:
+      'Telo je strojom, ktorý zhrdzavie bez ohňa.\n' +
+      'Rozpáľ svaly, nech duchovia cítia tvoj pot až do podsvetia.',
+    task: 'Sprav 30 drepov v jednej sérii, bez prestávky.',
+    proofPrompt: 'Pošli spotené selfie hneď po poslednom drepe.',
+    note: '',
+  },
+  {
+    id: 24,
+    type: 'quest',
+    reveal: '2026-06-29',
+    title: 'Pečať úlohy — Kuchár osudu',
+    riddle:
+      'Pamätáš na biele dary minulých pečatí?\n' +
+      'Spoj aspoň jeden z nich a stvor pokrm hodný hostiny pred výpravou.',
+    task:
+      'Priprav akékoľvek jedlo, v ktorom je aspoň jedna ingrediencia z minulých ' +
+      'pečatí (vajcia, múka, mlieko alebo bryndza 😏).',
+    proofPrompt: 'Pošli fotku hotového taniera (a čo to vlastne je).',
+    note: '',
+  },
+  {
+    id: 25,
+    type: 'quest',
+    reveal: '2026-07-03',
+    title: 'Pečať úlohy — Tichá hrôza',
+    riddle:
+      'Minulosť je truhlica, ktorú väčšina drží zamknutú.\n' +
+      'Otvor ju — duchovia poznajú pravdu a klam okamžite odhalia.',
+    task:
+      'Vyhrab zo svojej galérie najtrápnejšiu/najškaredšiu vlastnú fotku spred ' +
+      'aspoň piatich rokov.',
+    proofPrompt: 'Pošli tú fotku (žiadne podvádzanie, duchovia vidia dátumy).',
+    note: '',
+  },
+  {
+    id: 26,
+    type: 'quest',
+    reveal: '2026-07-05',
+    title: 'Pečať úlohy — Veštba',
+    riddle:
+      'Pred poslednou pečaťou nech prehovorí tvoja vlastná veštba.\n' +
+      'Slová, ktoré dnes napíšeš, sa po návrate zmerajú s pravdou.',
+    task:
+      'Napíš tri vety — proroctvo o tom, čo ťa na výprave čaká. Po návrate ' +
+      'spočítame, koľko sa splnilo.',
+    proofPrompt: 'Pošli svoje tri vety ako text.',
+    note: '',
+  },
+]
+
+// =====================================================================
+//  GAMIFIKÁCIA — body, odznaky, kronika (lore) a odmeny.
+//  Všetko sa odvodzuje z toho, čo už má Sehe vyriešené (localStorage).
+// =====================================================================
+
+// Body za vyriešenú pečať podľa typu.
+export const POINTS = {
+  riddle: 10, // uhádnutá hádanka
+  quest: 25,  // splnená úloha (dôkaz) — cení sa viac
+}
+
+// Odznaky. `when` je jednoduchá podmienka, ktorú appka vyhodnotí:
+//   minSolved / minRiddles / minQuests = prah, allQuests / all = boolean.
+export const BADGES = [
+  { id: 'first', icon: '🩸', label: 'Prvá krv', desc: 'Zlomil si svoju prvú pečať.', when: { minSolved: 1 } },
+  { id: 'five', icon: '🔥', label: 'Rozbehnutý', desc: 'Päť pečatí za chrbtom.', when: { minSolved: 5 } },
+  { id: 'ten', icon: '⚔️', label: 'Neoblomný', desc: 'Desať pečatí zlomených.', when: { minSolved: 10 } },
+  { id: 'firstquest', icon: '📸', label: 'Pútnik dôkazov', desc: 'Splnil si svoju prvú úlohu.', when: { minQuests: 1 } },
+  { id: 'allquests', icon: '🎯', label: 'Vykonávateľ', desc: 'Splnil si všetky úlohy.', when: { allQuests: true } },
+  { id: 'master', icon: '👑', label: 'Majster pečatí', desc: 'Zlomil si všetko. Legenda.', when: { all: true } },
+]
+
+// Kronika — útržky príbehu, ktoré rozpráva Strážca pečatí. Odomykajú sa,
+// keď počet vyriešených dosiahne `atSolved`.
+export const CHRONICLE = [
+  {
+    atSolved: 1,
+    title: 'Strážca prehovoril',
+    text:
+      'Tak predsa. Pečať sa pohla pod tvojou rukou, pútnik. Ja som Strážca ' +
+      'pečatí — a budem ťa sledovať pri každej ďalšej. Nečakaj milosť, čakaj výzvu.',
+  },
+  {
+    atSolved: 5,
+    title: 'Hmla riedne',
+    text:
+      'Päť pečatí padlo. Začínaš rozoznávať pravdu od klamu — no najťažšie ' +
+      'skúšky ešte len prídu. Niektoré nebudú o hádaní, ale o čine.',
+  },
+  {
+    atSolved: 10,
+    title: 'Cesta sa láme',
+    text:
+      'Desať. Polovica cesty je za tebou. Duchovia šepkajú tvoje meno už aj ' +
+      'medzi sebou. Ešte vydrž — vrchol je blízko.',
+  },
+  {
+    atSolved: 16,
+    title: 'Posledný úsek',
+    text:
+      'Ostáva len hŕstka pečatí. Zozbieraj zvyšok síl — to, čo ťa čaká na konci, ' +
+      'si zaslúži len ten, kto neutečie pred vlastnou hanbou ani potom.',
+  },
+]
+
+// Odmeny — odomknú sa v appke, no Sehe ich dostane OSOBNE od druhov.
+export const REWARDS = [
+  {
+    atSolved: 5,
+    title: 'Žetón na prvý drink',
+    desc: 'Ukáž tento odznak druhom — prvé pivo/drink pred výpravou ide na nich.',
+  },
+  {
+    atSolved: 10,
+    title: 'Žolík slobody',
+    desc: 'Máš právo vynechať jednu úlohu podľa vlastného výberu. Použi múdro.',
+  },
+  {
+    atSolved: 16,
+    title: 'Tajná indícia',
+    desc: 'Druhovia ti prezradia jeden útržok o tom, kam výprava naozaj smeruje.',
+  },
+  {
+    atSolved: 26,
+    title: 'Hlavná cena',
+    desc: 'Trofej pre toho, kto prežil Pradávnu výzvu. Odovzdaná osobne pred odchodom.',
+  },
 ]
