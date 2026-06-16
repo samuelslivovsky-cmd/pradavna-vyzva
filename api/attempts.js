@@ -3,7 +3,7 @@
 //  Chránené tokenom (?token=<VITE_PREVIEW_TOKEN alebo CRON_SECRET>).
 //  Nič nezapisuje.
 // =====================================================================
-import { kvEnabled, getAllAttempts } from '../lib/kv.js'
+import { kvEnabled, getAllAttempts, getAllProofs } from '../lib/kv.js'
 import { HINTS } from '../src/data.js'
 
 function authorized(req) {
@@ -19,8 +19,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, kv: false, attempts: {} })
   }
   try {
-    const attempts = await getAllAttempts(HINTS.map((h) => h.id))
-    return res.status(200).json({ ok: true, kv: true, attempts })
+    const attempts = await getAllAttempts(HINTS.filter((h) => h.type !== 'quest').map((h) => h.id))
+    const proofs = await getAllProofs(HINTS.filter((h) => h.type === 'quest').map((h) => h.id))
+    return res.status(200).json({ ok: true, kv: true, attempts, proofs })
   } catch (err) {
     return res.status(500).json({ ok: false, error: String(err) })
   }

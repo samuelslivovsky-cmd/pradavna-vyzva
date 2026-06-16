@@ -7,10 +7,57 @@ import {
   useMotionValue,
   useSpring,
 } from 'framer-motion'
-import { EVENT, HINTS, MAX_ATTEMPTS, WHISPER_AFTER, FINALE } from './data.js'
+import {
+  EVENT,
+  HINTS,
+  MAX_ATTEMPTS,
+  WHISPER_AFTER,
+  FINALE,
+  POINTS,
+  BADGES,
+  CHRONICLE,
+  REWARDS,
+} from './data.js'
 import { downloadICS } from './calendar.js'
 
 const SEEN_KEY = 'sehe.seen.sigils'
+const BADGE_SEEN_KEY = 'sehe.seen.badges'
+
+// vyhodnotenie podmienky odznaku voči aktuálnemu stavu
+function badgeEarned(when, ctx) {
+  if (!when) return false
+  if (when.minSolved && ctx.solvedCount < when.minSolved) return false
+  if (when.minRiddles && ctx.solvedRiddles < when.minRiddles) return false
+  if (when.minQuests && ctx.solvedQuests < when.minQuests) return false
+  if (when.allQuests && (ctx.totalQuests === 0 || ctx.solvedQuests < ctx.totalQuests)) return false
+  if (when.all && ctx.solvedCount < ctx.total) return false
+  return true
+}
+
+// zmenší obrázok na rozumnú veľkosť a vráti JPEG data URL (kvôli KV/e-mailu)
+function downscaleToDataURL(file, maxDim = 1024, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('obrázok sa nepodarilo načítať'))
+    }
+    img.src = url
+  })
+}
 
 // --- animačné varianty (framer-motion) ---------------------------------
 const EASE = [0.22, 1, 0.36, 1]
@@ -142,16 +189,18 @@ function isPreview() {
 export default function App() {
   const preview = useMemo(() => isPreview(), [])
 
-  const hints = useMemo(
-    () =>
-      HINTS.map((h) => ({
-        ...h,
-        date: parseDate(h.reveal),
-        unlocked:
-          preview || startOfToday().getTime() >= parseDate(h.reveal).getTime(),
-      })),
-    [preview],
-  )
+  const hints = useMemo(() => {
+    const list = HINTS.map((h) => ({
+      ...h,
+      date: parseDate(h.reveal),
+      unlocked:
+        preview || startOfToday().getTime() >= parseDate(h.reveal).getTime(),
+    })).sort((a, b) => a.date.getTime() - b.date.getTime())
+    // poradové číslo len pre hádanky (zodpovedá ich rímskej číslici v titulku)
+    let r = 0
+    for (const h of list) if (h.type !== 'quest') h.ord = (r += 1)
+    return list
+  }, [preview])
 
   const nextLocked = hints.find((h) => !h.unlocked)
   const countdown = useCountdown(nextLocked?.reveal)
@@ -163,6 +212,25 @@ export default function App() {
   const [solved, setSolved] = useState(loadSolvedSet)
   const solvedCount = solved.size
   const progress = Math.round((solvedCount / hints.length) * 100)
+
+  // --- gamifikácia: body, odznaky, kronika, odmeny (odvodené zo stavu) ---
+  const game = useMemo(() => {
+    const solvedRiddles = hints.filter((h) => h.type !== 'quest' && solved.has(h.id)).length
+    const solvedQuests = hints.filter((h) => h.type === 'quest' && solved.has(h.id)).length
+    const totalQuests = hints.filter((h) => h.type === 'quest').length
+    const points = solvedRiddles * POINTS.riddle + solvedQuests * POINTS.quest
+    const ctx = {
+      solvedCount,
+      solvedRiddles,
+      solvedQuests,
+      totalQuests,
+      total: hints.length,
+    }
+    const earnedBadges = BADGES.filter((b) => badgeEarned(b.when, ctx))
+    const lore = CHRONICLE.filter((c) => solvedCount >= c.atSolved)
+    const rewards = REWARDS.filter((r) => solvedCount >= r.atSolved)
+    return { points, earnedBadges, lore, rewards }
+  }, [hints, solved, solvedCount])
 
   // --- "nová pečať" od poslednej návštevy (cez localStorage) ---
   const [newIds, setNewIds] = useState(() => new Set())
@@ -280,6 +348,18 @@ export default function App() {
     })
   }
 
+  // odoslanie dôkazu k úlohe (uloží sa na serveri + e-mail organizátorovi)
+  function postProof(hint, payload) {
+    if (preview) return Promise.resolve()
+    return fetch('/api/proof', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: hint.id, title: hint.title, ...payload }),
+    }).catch(() => {
+      /* offline / lokálny dev bez /api — nevadí */
+    })
+  }
+
   // --- finále: všetkých 19 vyriešených ---
   const allSolved = solvedCount === hints.length
   const finaleFired = useRef(false)
@@ -289,6 +369,31 @@ export default function App() {
       setBurst((b) => b + 1)
     }
   }, [allSolved])
+
+  // --- novo získané odznaky: toast + konfety (raz pre každý odznak) ---
+  const badgesInit = useRef(false)
+  useEffect(() => {
+    let seen = []
+    try {
+      seen = JSON.parse(localStorage.getItem(BADGE_SEEN_KEY) || '[]')
+    } catch {
+      seen = []
+    }
+    const earnedIds = game.earnedBadges.map((b) => b.id)
+    const fresh = game.earnedBadges.filter((b) => !seen.includes(b.id))
+    // pri prvom načítaní len ulož stav (nech to neblikne hneď po otvorení)
+    if (fresh.length && badgesInit.current) {
+      const last = fresh[fresh.length - 1]
+      showToast(`${last.icon} Nový odznak: ${last.label}`)
+      setBurst((b) => b + 1)
+    }
+    badgesInit.current = true
+    try {
+      localStorage.setItem(BADGE_SEEN_KEY, JSON.stringify(earnedIds))
+    } catch {
+      /* ignore */
+    }
+  }, [game.earnedBadges])
 
   // --- scroll parallax + progress lišta ---
   const { scrollY, scrollYProgress } = useScroll()
@@ -519,10 +624,92 @@ export default function App() {
             />
           </div>
           <p className="progress-label">
-            {solvedCount} z {hints.length} hádaniek vyriešených
+            {solvedCount} z {hints.length} pečatí vyriešených
             <span className="progress-sub"> · {unlockedCount} pečatí odhalených</span>
           </p>
         </motion.section>
+
+        {solvedCount > 0 && (
+          <motion.section
+            className="score"
+            aria-label="Magické body"
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={inView}
+          >
+            <p className="score-label">Magické body</p>
+            <p className="score-value">✦ {game.points}</p>
+          </motion.section>
+        )}
+
+        {game.earnedBadges.length > 0 && (
+          <motion.section
+            className="badges-section"
+            aria-label="Odznaky"
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={inView}
+          >
+            <p className="section-eyebrow">Odznaky</p>
+            <div className="badges">
+              {BADGES.map((b) => {
+                const earned = game.earnedBadges.some((e) => e.id === b.id)
+                return (
+                  <div
+                    key={b.id}
+                    className={`badge${earned ? ' earned' : ' locked'}`}
+                    title={earned ? b.desc : 'Zatiaľ nezískaný'}
+                  >
+                    <span className="badge-icon">{earned ? b.icon : '🔒'}</span>
+                    <span className="badge-label">{b.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </motion.section>
+        )}
+
+        {game.lore.length > 0 && (
+          <motion.section
+            className="lore"
+            aria-label="Kronika"
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={inView}
+          >
+            <p className="section-eyebrow">Kronika Strážcu pečatí</p>
+            {game.lore.map((c) => (
+              <div className="lore-entry" key={c.atSolved}>
+                <h3 className="lore-title">{c.title}</h3>
+                <p className="lore-text">{c.text}</p>
+              </div>
+            ))}
+          </motion.section>
+        )}
+
+        {game.rewards.length > 0 && (
+          <motion.section
+            className="rewards"
+            aria-label="Odmeny"
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={inView}
+          >
+            <p className="section-eyebrow">Odomknuté odmeny</p>
+            <p className="rewards-hint">Tieto si vyzdvihni osobne od svojich druhov.</p>
+            <ul className="reward-list">
+              {game.rewards.map((r) => (
+                <li key={r.atSolved}>
+                  <strong>{r.title}</strong> — {r.desc}
+                </li>
+              ))}
+            </ul>
+          </motion.section>
+        )}
 
         {nextLocked && (
           <motion.section
@@ -620,19 +807,34 @@ export default function App() {
                 <h2 className="card-title">{h.title}</h2>
                 <p className="card-riddle">{h.riddle}</p>
                 {h.note && <p className="card-note">{h.note}</p>}
-                <Guess
-                  hint={h}
-                  onGuess={(value, correct) => logAttempt(h, { value, correct })}
-                  onReveal={() => logAttempt(h, { revealed: true })}
-                  onSolved={(attemptNo) => {
-                    setSolved((prev) => {
-                      const next = new Set(prev)
-                      next.add(h.id)
-                      return next
-                    })
-                    if (!preview) notifyOrganizer(h, attemptNo)
-                  }}
-                />
+                {h.type === 'quest' ? (
+                  <Quest
+                    hint={h}
+                    preview={preview}
+                    onSubmit={(payload) => postProof(h, payload)}
+                    onSolved={() => {
+                      setSolved((prev) => {
+                        const next = new Set(prev)
+                        next.add(h.id)
+                        return next
+                      })
+                    }}
+                  />
+                ) : (
+                  <Guess
+                    hint={h}
+                    onGuess={(value, correct) => logAttempt(h, { value, correct })}
+                    onReveal={() => logAttempt(h, { revealed: true })}
+                    onSolved={(attemptNo) => {
+                      setSolved((prev) => {
+                        const next = new Set(prev)
+                        next.add(h.id)
+                        return next
+                      })
+                      if (!preview) notifyOrganizer(h, attemptNo)
+                    }}
+                  />
+                )}
               </TiltCard>
             ) : (
               <TiltCard
@@ -642,9 +844,11 @@ export default function App() {
                 hoverLift={-4}
                 aria-disabled="true"
               >
-                <div className="card-index">{romanize(i + 1)}</div>
+                <div className="card-index">{h.type === 'quest' ? '✶' : romanize(h.ord)}</div>
                 <div className="lock-glyph" aria-hidden="true">⛧</div>
-                <p className="card-locked-text">Zapečatené</p>
+                <p className="card-locked-text">
+                  {h.type === 'quest' ? 'Zapečatená úloha' : 'Zapečatené'}
+                </p>
                 <p className="card-when">
                   odomkne sa {fmt.format(h.date)}
                 </p>
@@ -782,6 +986,89 @@ function Guess({ hint, onSolved, onGuess, onReveal }) {
             Vzdávam sa — prezradiť odpoveď
           </button>
         )}
+      </div>
+    </form>
+  )
+}
+
+function Quest({ hint, preview, onSubmit, onSolved }) {
+  const key = `sehe.guess.${hint.id}`
+  const [state, setState] = useState(() => {
+    const fallback = { solved: false, proofText: '', sent: false }
+    try {
+      return JSON.parse(localStorage.getItem(key) || 'null') || fallback
+    } catch {
+      return fallback
+    }
+  })
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  function persist(next) {
+    setState(next)
+    try {
+      localStorage.setItem(key, JSON.stringify(next))
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    if (state.solved || busy || !text.trim()) return
+    setBusy(true)
+    setError('')
+    let photo
+    try {
+      const file = e.target.elements.proofPhoto?.files?.[0]
+      if (file) photo = await downscaleToDataURL(file)
+    } catch {
+      setError('Fotku sa nepodarilo spracovať — skús menšiu alebo pošli bez nej.')
+      setBusy(false)
+      return
+    }
+    // optimisticky označ ako splnené (postup + konfety hneď)
+    persist({ solved: true, proofText: text.trim(), sent: false })
+    onSolved && onSolved()
+    try {
+      await onSubmit({ text: text.trim(), photo })
+      persist({ solved: true, proofText: text.trim(), sent: true })
+    } catch {
+      /* dôkaz sa neodoslal (offline) — pečať aj tak ostáva splnená */
+    }
+    setBusy(false)
+  }
+
+  if (state.solved) {
+    return (
+      <div className="guess guess-solved quest-solved">
+        ✔ Úloha splnená — dôkaz {preview ? 'pripravený' : state.sent ? 'odoslaný' : 'uložený'}.
+        {state.proofText && <p className="quest-proof">„{state.proofText}"</p>}
+      </div>
+    )
+  }
+
+  return (
+    <form className="guess quest" onSubmit={submit}>
+      {hint.task && <p className="quest-task">🎯 {hint.task}</p>}
+      <textarea
+        className="guess-input quest-text"
+        value={text}
+        onChange={(ev) => setText(ev.target.value)}
+        placeholder={hint.proofPrompt || 'Napíš svoj dôkaz…'}
+        rows={3}
+        aria-label="Tvoj dôkaz"
+      />
+      <label className="quest-file">
+        📷 Priložiť fotku (voliteľné)
+        <input type="file" name="proofPhoto" accept="image/*" capture="environment" />
+      </label>
+      {error && <p className="guess-feedback">{error}</p>}
+      <div className="guess-actions">
+        <button className="guess-btn" type="submit" disabled={busy || !text.trim()}>
+          {busy ? 'Odosielam…' : 'Splnené — odoslať dôkaz'}
+        </button>
       </div>
     </form>
   )
