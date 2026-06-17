@@ -17,6 +17,7 @@ import {
   BADGES,
   CHRONICLE,
   REWARDS,
+  UPDATE,
 } from './data.js'
 import { downloadICS } from './calendar.js'
 
@@ -281,6 +282,25 @@ export default function App() {
   // --- veľký odpočet do odchodu ---
   const doom = useCountdown(EVENT.departure)
 
+  // --- oznam o novinkách (raz pri prvom otvorení po update) ---
+  const updateKey = `sehe.seen.update.${UPDATE.id}`
+  const [showUpdate, setShowUpdate] = useState(false)
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(updateKey)) setShowUpdate(true)
+    } catch {
+      /* ignore */
+    }
+  }, [updateKey])
+  function dismissUpdate() {
+    setShowUpdate(false)
+    try {
+      localStorage.setItem(updateKey, '1')
+    } catch {
+      /* ignore */
+    }
+  }
+
   // --- konfety (burst = počítadlo spustení) ---
   const [burst, setBurst] = useState(0)
 
@@ -476,6 +496,42 @@ export default function App() {
       <Meteors count={coarse ? 2 : 4} />
       <Embers count={coarse ? 8 : 16} />
       {burst > 0 && <Confetti key={burst} />}
+      <AnimatePresence>
+        {showUpdate && (
+          <motion.div
+            className="update-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={dismissUpdate}
+          >
+            <motion.div
+              className="update-modal"
+              role="dialog"
+              aria-modal="true"
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              transition={{ type: 'spring', stiffness: 120, damping: 15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="update-glyph" aria-hidden="true">✦ ☾ ✦</div>
+              <p className="update-eyebrow">Pradávna výzva sa mení</p>
+              <h2 className="update-title">{UPDATE.title}</h2>
+              {UPDATE.lines.map((l, i) => (
+                <p
+                  key={i}
+                  className="update-line"
+                  dangerouslySetInnerHTML={{ __html: l }}
+                />
+              ))}
+              <button className="update-btn" type="button" onClick={dismissUpdate}>
+                {UPDATE.cta}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {toast && (
           <motion.div

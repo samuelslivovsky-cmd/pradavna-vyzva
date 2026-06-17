@@ -462,3 +462,18 @@ export const REWARDS = [
     desc: 'Trofej pre toho, kto prežil Pradávnu výzvu. Odovzdaná osobne pred odchodom.',
   },
 ]
+
+// Oznam o novinkách — zobrazí sa raz (modal) pri prvom otvorení po update.
+// Zmeň `id`, ak chceš, aby sa oznam ukázal znova (napr. pri ďalšom update).
+export const UPDATE = {
+  id: 'ulohy-2026-06',
+  title: 'Výzva sa prehĺbila',
+  lines: [
+    'Strážca pečatí pridal nové skúšky, Sehe.',
+    'Odteraz nie každá pečať je hádanka — niektoré ti dajú konkrétnu <strong>úlohu</strong>. Splníš ju v reálnom svete a pošleš <strong>dôkaz</strong> (text alebo fotku).',
+    'Za každú zlomenú pečať zbieraš <strong>magické body</strong> a <strong>odznaky</strong>. Na míľnikoch sa odomyká <strong>Kronika</strong> a <strong>odmeny</strong>, ktoré si vyzdvihneš osobne od svojich druhov.',
+    'Tvoj doterajší postup ostáva — body aj odmeny máš pripísané spätne.',
+    'Sleduj znamenia. ☾',
+  ],
+  cta: 'Prijímam výzvu ☾',
+}
