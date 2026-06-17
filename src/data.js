@@ -443,23 +443,23 @@ export const CHRONICLE = [
 export const REWARDS = [
   {
     atSolved: 5,
-    title: 'Žetón na prvý drink',
-    desc: 'Ukáž tento odznak druhom — prvé pivo/drink pred výpravou ide na nich.',
+    title: 'Kvalitné merino ponožky',
+    desc: 'Pár poriadnych ponožiek, čo ťa neopustia na túre ani v civile. Vyzdvihni si ich osobne od druhov.',
   },
   {
     atSolved: 10,
-    title: 'Žolík slobody',
-    desc: 'Máš právo vynechať jednu úlohu podľa vlastného výberu. Použi múdro.',
+    title: 'Rýchloschnúci uterák do batoha',
+    desc: 'Kompaktný mikrovláknový uterák — zíde sa na výprave aj na každej ďalšej ceste. Tvoj, osobne.',
   },
   {
     atSolved: 16,
-    title: 'Tajná indícia',
-    desc: 'Druhovia ti prezradia jeden útržok o tom, kam výprava naozaj smeruje.',
+    title: 'Nerezová termoska',
+    desc: 'Drží teplo aj chlad — na kávu do práce aj na čaj na hrebeni. Odovzdaná osobne.',
   },
   {
     atSolved: 26,
-    title: 'Hlavná cena',
-    desc: 'Trofej pre toho, kto prežil Pradávnu výzvu. Odovzdaná osobne pred odchodom.',
+    title: 'Multifunkčný vreckový nôž',
+    desc: 'Hlavná cena: poriadny multitool, ktorý ti poslúži celý život. Odovzdaný osobne pred odchodom.',
   },
 ]
 
