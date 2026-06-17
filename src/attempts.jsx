@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import './styles.css'
-import { HINTS } from './data.js'
+import { HINTS, BADGES, REWARDS, POINTS } from './data.js'
 
 const params = new URLSearchParams(window.location.search)
 const TOKEN = params.get('token') || params.get('preview') || ''
@@ -18,6 +18,17 @@ function statusOf(list) {
   if (list.some((a) => a.revealed)) return { label: 'Prezradené', cls: 'st-rev' }
   if (list.length) return { label: 'Skúša…', cls: 'st-try' }
   return { label: 'Zatiaľ nič', cls: 'st-none' }
+}
+
+// vyhodnotenie podmienky odznaku (rovnaká logika ako v hre, App.jsx)
+function badgeEarned(when, ctx) {
+  if (!when) return false
+  if (when.minSolved && ctx.solvedCount < when.minSolved) return false
+  if (when.minRiddles && ctx.solvedRiddles < when.minRiddles) return false
+  if (when.minQuests && ctx.solvedQuests < when.minQuests) return false
+  if (when.allQuests && (ctx.totalQuests === 0 || ctx.solvedQuests < ctx.totalQuests)) return false
+  if (when.all && ctx.solvedCount < ctx.total) return false
+  return true
 }
 
 function App() {
@@ -49,6 +60,17 @@ function App() {
       : (attempts[h.id] || []).some((a) => a.correct),
   ).length
 
+  // gamifikácia z pohľadu organizátora (odvodené zo serverových dát)
+  const solvedRiddles = HINTS.filter(
+    (h) => h.type !== 'quest' && (attempts[h.id] || []).some((a) => a.correct),
+  ).length
+  const solvedQuests = HINTS.filter((h) => h.type === 'quest' && Boolean(proofs[h.id])).length
+  const totalQuests = HINTS.filter((h) => h.type === 'quest').length
+  const points = solvedRiddles * POINTS.riddle + solvedQuests * POINTS.quest
+  const badgeCtx = { solvedCount, solvedRiddles, solvedQuests, totalQuests, total: HINTS.length }
+  const earnedBadges = BADGES.filter((b) => badgeEarned(b.when, badgeCtx))
+  const unlockedRewards = REWARDS.filter((r) => solvedCount >= r.atSolved)
+
   return (
     <div className="page">
       <div className="stars" aria-hidden="true" />
@@ -76,8 +98,51 @@ function App() {
 
         {data && data.ok && (
           <p className="progress-label" style={{ marginBottom: '1.6rem' }}>
-            {solvedCount} z {HINTS.length} uhádnutých · spolu {totalTries} pokusov
+            {solvedCount} z {HINTS.length} vyriešených · spolu {totalTries} pokusov
           </p>
+        )}
+
+        {data && data.ok && (
+          <section className="att-game" style={{ marginBottom: '2rem', textAlign: 'center' }}>
+            <div className="score" style={{ marginBottom: '1.6rem' }}>
+              <p className="score-label">Magické body</p>
+              <p className="score-value">✦ {points}</p>
+            </div>
+
+            <p className="section-eyebrow">
+              Odomknuté odznaky ({earnedBadges.length} z {BADGES.length})
+            </p>
+            <div className="badges" style={{ marginBottom: '1.6rem' }}>
+              {BADGES.map((b) => {
+                const earned = earnedBadges.some((e) => e.id === b.id)
+                return (
+                  <div
+                    key={b.id}
+                    className={`badge${earned ? ' earned' : ' locked'}`}
+                    title={b.desc}
+                  >
+                    <span className="badge-icon">{earned ? b.icon : '🔒'}</span>
+                    <span className="badge-label">{b.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="section-eyebrow">
+              Odomknuté odmeny ({unlockedRewards.length} z {REWARDS.length})
+            </p>
+            {unlockedRewards.length === 0 ? (
+              <p className="att-empty">— zatiaľ žiadna odmena —</p>
+            ) : (
+              <ul className="reward-list">
+                {unlockedRewards.map((r) => (
+                  <li key={r.atSolved}>
+                    <strong>{r.title}</strong> — {r.desc}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
 
         {data && data.ok && (
