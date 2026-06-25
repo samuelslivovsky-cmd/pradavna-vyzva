@@ -31,10 +31,110 @@ function badgeEarned(when, ctx) {
   return true
 }
 
+// Zmenší fotku (ktorú organizátor nahráva za Seheho) na rozumnú veľkosť,
+// nech sa zmestí do KV (Upstash limit ~1 MB na požiadavku).
+function downscale(file, maxDim = 1280, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('obrázok sa nepodarilo načítať'))
+    }
+    img.src = url
+  })
+}
+
+// Formulár pre organizátora: doplniť/upraviť dôkaz za Seheho (text + fotka).
+function ProofUploader({ hint, existing, onSaved }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState(existing?.text || '')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  async function save(e) {
+    e.preventDefault()
+    setBusy(true)
+    setMsg('')
+    let photo
+    try {
+      const file = e.target.elements.proofFile?.files?.[0]
+      // nová fotka → zmenší; inak ponecháme existujúcu (aby sa neprepísala)
+      photo = file ? await downscale(file) : existing?.photo || ''
+    } catch {
+      setMsg('⚠️ Fotku sa nepodarilo spracovať — skús inú.')
+      setBusy(false)
+      return
+    }
+    try {
+      const r = await fetch(`/api/set-proof?token=${encodeURIComponent(TOKEN)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: hint.id, text: text.trim(), photo }),
+      })
+      const j = await r.json()
+      if (j.ok) {
+        setMsg('✓ Uložené')
+        setOpen(false)
+        onSaved && onSaved()
+      } else {
+        setMsg('⚠️ ' + (j.error || 'Nepodarilo sa uložiť.'))
+      }
+    } catch {
+      setMsg('⚠️ Nepodarilo sa spojiť so serverom.')
+    }
+    setBusy(false)
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="att-edit-btn" onClick={() => setOpen(true)}>
+        {existing ? '✏️ Upraviť dôkaz' : '➕ Doplniť dôkaz za Seheho'}
+      </button>
+    )
+  }
+
+  return (
+    <form className="att-edit" onSubmit={save}>
+      <textarea
+        className="att-edit-text"
+        value={text}
+        onChange={(ev) => setText(ev.target.value)}
+        placeholder="Text dôkazu (voliteľné)…"
+        rows={2}
+      />
+      <label className="att-edit-file">
+        📷 Fotka {existing?.photo ? '(prázdne = ponechá súčasnú)' : ''}
+        <input type="file" name="proofFile" accept="image/*" />
+      </label>
+      <div className="att-edit-actions">
+        <button type="submit" disabled={busy}>
+          {busy ? 'Ukladám…' : 'Uložiť'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} disabled={busy}>
+          Zrušiť
+        </button>
+      </div>
+      {msg && <p className="att-edit-msg">{msg}</p>}
+    </form>
+  )
+}
+
 function App() {
   const [state, setState] = useState({ loading: true })
 
-  useEffect(() => {
+  function load() {
     if (!TOKEN) {
       setState({ loading: false, error: 'Chýba token v adrese (?token=…).' })
       return
@@ -48,6 +148,10 @@ function App() {
           error: 'Nepodarilo sa načítať (API beží len na Verceli): ' + e,
         }),
       )
+  }
+
+  useEffect(() => {
+    load()
   }, [])
 
   const data = state.data
@@ -173,10 +277,14 @@ function App() {
                           />
                         )}
                         {proof.t && (
-                          <span className="att-time">{timeFmt.format(new Date(proof.t))}</span>
+                          <span className="att-time">
+                            {timeFmt.format(new Date(proof.t))}
+                            {proof.byOrganizer ? ' · doplnené organizátorom' : ''}
+                          </span>
                         )}
                       </div>
                     )}
+                    <ProofUploader hint={h} existing={proof} onSaved={load} />
                   </article>
                 )
               }

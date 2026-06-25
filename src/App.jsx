@@ -36,28 +36,52 @@ function badgeEarned(when, ctx) {
 }
 
 // zmenší obrázok na rozumnú veľkosť a vráti JPEG data URL (kvôli KV/e-mailu)
-function downscaleToDataURL(file, maxDim = 1024, quality = 0.7) {
+// Strop pre plnú fotku musí ladiť so serverom (api/proof.js) — väčšiu fotku
+// e-mail/telo požiadavky neunesie. Ak ho fotka prekročí, Seheho upozorníme.
+const MAX_FULL_CHARS = 3_800_000
+
+// Načíta súbor do <img> (dekóduje raz) — z neho potom vyrobíme viac verzií.
+function loadImage(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
-      const w = Math.round(img.width * scale)
-      const h = Math.round(img.height * scale)
-      const canvas = document.createElement('canvas')
-      canvas.width = w
-      canvas.height = h
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0, w, h)
-      resolve(canvas.toDataURL('image/jpeg', quality))
-    }
+    img.onload = () => resolve({ img, url })
     img.onerror = () => {
       URL.revokeObjectURL(url)
       reject(new Error('obrázok sa nepodarilo načítať'))
     }
     img.src = url
   })
+}
+
+// Vykreslí obrázok do JPEG data URL so zadaným max. rozmerom a kvalitou.
+function renderJpeg(img, maxDim, quality) {
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+  const w = Math.round(img.width * scale)
+  const h = Math.round(img.height * scale)
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(img, 0, 0, w, h)
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
+// Z jednej fotky vyrobí dve verzie:
+//   full  → pekná fotka do e-mailu organizátorovi (max ~2560 px, kvalita 0.88)
+//   thumb → malý náhľad do KV / náhľadovej stránky (max 640 px, kvalita 0.6)
+// Plná verzia je tlačená čo najvyššie, no stále pod limit Vercelu
+// (telo požiadavky max ~4,5 MB) — pravý originál z telefónu (8–12 MB) by neprešiel.
+async function preparePhotos(file) {
+  const { img, url } = await loadImage(file)
+  try {
+    return {
+      full: renderJpeg(img, 2560, 0.88),
+      thumb: renderJpeg(img, 640, 0.6),
+    }
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 // --- animačné varianty (framer-motion) ---------------------------------
@@ -1075,21 +1099,45 @@ function Quest({ hint, preview, onSubmit, onSolved }) {
     if (state.solved || busy || !text.trim()) return
     setBusy(true)
     setError('')
-    let photo
+    let photo, photoFull
     try {
       const file = e.target.elements.proofPhoto?.files?.[0]
-      if (file) photo = await downscaleToDataURL(file)
+      if (file) {
+        const out = await preparePhotos(file)
+        photo = out.thumb // malý náhľad do KV
+        photoFull = out.full // pekná fotka do e-mailu
+      }
     } catch {
       setError('Fotku sa nepodarilo spracovať — skús menšiu alebo pošli bez nej.')
       setBusy(false)
       return
     }
+
+    // Fotka je priveľká na odoslanie e-mailom → upozorni a nechaj potvrdiť.
+    // Po potvrdení priveľkú fotku neodošleme (nezhodí to mail), Sehe ju pošle
+    // organizátorovi cez Messenger a ten ju doplní na stránke „Sehe-ho odpovede".
+    let viaMessenger = false
+    if (photoFull && photoFull.length > MAX_FULL_CHARS) {
+      const ok = window.confirm(
+        'Táto fotka je príliš veľká na automatické odoslanie. 📸\n\n' +
+          'Klikni OK — úloha sa označí ako splnená a fotku potom pošli ' +
+          'organizátorovi cez Messenger, on ju doplní ručne.\n\n' +
+          'Zruš, ak chceš skúsiť menšiu alebo inú fotku.',
+      )
+      if (!ok) {
+        setBusy(false)
+        return
+      }
+      photoFull = undefined // priveľkú neposielame; ostane len malý náhľad
+      viaMessenger = true
+    }
+
     // optimisticky označ ako splnené (postup + konfety hneď)
-    persist({ solved: true, proofText: text.trim(), sent: false })
+    persist({ solved: true, proofText: text.trim(), sent: false, viaMessenger })
     onSolved && onSolved()
     try {
-      await onSubmit({ text: text.trim(), photo })
-      persist({ solved: true, proofText: text.trim(), sent: true })
+      await onSubmit({ text: text.trim(), photo, photoFull })
+      persist({ solved: true, proofText: text.trim(), sent: true, viaMessenger })
     } catch {
       /* dôkaz sa neodoslal (offline) — pečať aj tak ostáva splnená */
     }
@@ -1101,6 +1149,11 @@ function Quest({ hint, preview, onSubmit, onSolved }) {
       <div className="guess guess-solved quest-solved">
         ✔ Úloha splnená — dôkaz {preview ? 'pripravený' : state.sent ? 'odoslaný' : 'uložený'}.
         {state.proofText && <p className="quest-proof">„{state.proofText}"</p>}
+        {state.viaMessenger && (
+          <p className="quest-messenger">
+            📸 Fotka bola priveľká — pošli ju organizátorovi cez Messenger 💬, doplní ju za teba.
+          </p>
+        )}
       </div>
     )
   }

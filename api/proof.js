@@ -9,8 +9,19 @@ import nodemailer from 'nodemailer'
 import { kvEnabled, setProof } from '../lib/kv.js'
 import { proofEmail } from '../lib/email.js'
 
-// strop pre veľkosť data URL fotky (base64 nafúkne bajty ~o tretinu)
-const MAX_PHOTO_CHARS = 220_000 // ~160 KB obrázok
+// stropy pre veľkosť data URL fotiek (base64 nafúkne bajty ~o tretinu)
+const DATA_URL_RE = /^data:image\/(jpeg|jpg|png|webp);base64,/
+const MAX_THUMB_CHARS = 400_000 // ~300 KB náhľad do KV
+// ~2,85 MB plná fotka do e-mailu. Vyššie sa ísť nedá: telo požiadavky na Verceli
+// má strop ~4,5 MB a musí sa doň zmestiť aj náhľad (~0,3 MB) a réžia JSON-u.
+const MAX_FULL_CHARS = 3_800_000
+
+// Vyčistí data URL: zlý formát alebo priveľká fotka → '' (request tým nezhodíme).
+function sanitizePhoto(v, max) {
+  if (typeof v !== 'string' || !DATA_URL_RE.test(v)) return ''
+  if (v.length > max) return ''
+  return v
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -31,19 +42,15 @@ export default async function handler(req, res) {
   }
 
   const text = String(b?.text ?? '').slice(0, 1000)
-  let photo = typeof b?.photo === 'string' ? b.photo : ''
-  if (photo && !/^data:image\/(jpeg|jpg|png|webp);base64,/.test(photo)) {
-    photo = '' // neznámy formát — radšej zahodíme
-  }
-  if (photo.length > MAX_PHOTO_CHARS) {
-    return res.status(200).json({ ok: false, reason: 'fotka je príliš veľká' })
-  }
+  // thumb = malý náhľad (uloží sa do KV), full = pekná fotka (príde do e-mailu)
+  const thumb = sanitizePhoto(b?.photo, MAX_THUMB_CHARS)
+  const full = sanitizePhoto(b?.photoFull, MAX_FULL_CHARS)
 
-  // 1) ulož dôkaz (ak je KV nastavené)
+  // 1) ulož dôkaz (ak je KV nastavené) — do KV ide len malý náhľad
   let stored = false
   if (kvEnabled()) {
     try {
-      await setProof(id, { text, photo, t: Date.now() })
+      await setProof(id, { text, photo: thumb, t: Date.now() })
       stored = true
     } catch {
       /* uloženie zlyhalo — skúsime aspoň poslať e-mail */
@@ -64,7 +71,9 @@ export default async function handler(req, res) {
       })
 
       const attachments = []
-      const m = photo && photo.match(/^data:(image\/[a-z]+);base64,(.*)$/)
+      // do e-mailu prilož plnú fotku; ak nie je, aspoň náhľad
+      const emailPhoto = full || thumb
+      const m = emailPhoto && emailPhoto.match(/^data:(image\/[a-z]+);base64,(.*)$/)
       if (m) {
         attachments.push({ filename: 'dokaz.jpg', content: m[2], encoding: 'base64', cid: 'proof' })
       }
